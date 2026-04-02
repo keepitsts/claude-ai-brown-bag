@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Flame,
   Shield,
   Sun,
 } from 'lucide-react'
@@ -10,9 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useLocationStore } from '@/stores/location-store'
 import { WeatherCard } from '@/components/dashboard/weather-card'
 import { SeismicCard } from '@/components/dashboard/seismic-card'
+import { FiresCard } from '@/components/dashboard/fires-card'
 
 const dataCards = [
-  { title: 'Fire Detections', icon: Flame },
   { title: 'Crime Statistics', icon: Shield },
   { title: 'Astronomy', icon: Sun },
 ]
@@ -37,6 +36,7 @@ export function DashboardContent() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <WeatherCard />
         <SeismicCard />
+        <FiresCard />
         {dataCards.map(({ title, icon: Icon }) => (
           <Card key={title}>
             <CardHeader>
