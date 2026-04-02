@@ -15,10 +15,12 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Build
+# Build artifacts
 dist/
-build/
 *.egg-info/
+
+# Build pipeline logs (keep build/ prompts and script)
+build/logs/
 
 # Claude Code internals (keep .claude/settings.json tracked)
 .claude/todos/
