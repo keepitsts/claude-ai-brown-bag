@@ -30,8 +30,7 @@ export async function fetchEarthquakes(
     maxradiuskm: radiusKm.toString(),
     starttime: startDate.toISOString().split('T')[0],
     endtime: endDate.toISOString().split('T')[0],
-    minmagnitude: '2.5',
-    orderby: 'time',
+    orderby: 'magnitude',
   })
 
   const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?${params}`)
