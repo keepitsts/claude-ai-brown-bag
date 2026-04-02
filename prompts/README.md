@@ -15,4 +15,7 @@ Sequential record of all prompts and actions used to build this repo. Each file 
 | 007 | claude-prompt | Initial setup prompt (ai-brown-bag.md) |
 | 008 | claude-prompt | Fix response approach — responses go in prompt files |
 | 009 | claude-prompt | Created research prompt for agentic rapid development best practices |
-| 010 | claude-prompt | Research result received, start implementing TRAILHEAD via headless pipeline |
+| 010 | claude-prompt | Research result received, built entire TRAILHEAD app (11 steps, 0 failures) |
+| 011 | claude-prompt | Added API keys, confirmed .env.local is gitignored |
+| 012 | claude-prompt | Discovered and removed nested .git inside trailhead/ |
+| 013 | claude-prompt | Updated prompt 010 with full build results |
