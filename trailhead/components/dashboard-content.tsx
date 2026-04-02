@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Cloud,
   Activity,
   Flame,
   Shield,
@@ -10,9 +9,9 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocationStore } from '@/stores/location-store'
+import { WeatherCard } from '@/components/dashboard/weather-card'
 
 const dataCards = [
-  { title: 'Weather', icon: Cloud },
   { title: 'Seismic Activity', icon: Activity },
   { title: 'Fire Detections', icon: Flame },
   { title: 'Crime Statistics', icon: Shield },
@@ -37,6 +36,7 @@ export function DashboardContent() {
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <WeatherCard />
         {dataCards.map(({ title, icon: Icon }) => (
           <Card key={title}>
             <CardHeader>
