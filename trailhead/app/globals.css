@@ -128,3 +128,34 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  aside,
+  nav,
+  .print\:hidden,
+  button {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  body {
+    display: block !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .print\:block {
+    display: block !important;
+  }
+
+  #briefing-content {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
