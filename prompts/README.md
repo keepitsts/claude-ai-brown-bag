@@ -19,3 +19,5 @@ Sequential record of all prompts and actions used to build this repo. Each file 
 | 011 | claude-prompt | Added API keys, confirmed .env.local is gitignored |
 | 012 | claude-prompt | Discovered and removed nested .git inside trailhead/ |
 | 013 | claude-prompt | Updated prompt 010 with full build results |
+| 014 | claude-prompt | Started dev server (pnpm dev on port 3001) |
+| 015 | claude-prompt | Fixed fire API (bbox), crime API (endpoint+dates), weather (Fahrenheit) |

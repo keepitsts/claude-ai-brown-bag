@@ -10,8 +10,16 @@ export async function fetchFireDetections(
     throw new Error('NASA FIRMS MAP_KEY is not configured')
   }
 
+  // FIRMS API expects a bounding box: west,south,east,north
+  // Approximate degrees from km (1 degree ≈ 111km at equator)
+  const degOffset = radiusKm / 111
+  const west = lng - degOffset
+  const south = lat - degOffset
+  const east = lng + degOffset
+  const north = lat + degOffset
+
   const res = await fetch(
-    `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${lat},${lng},${radiusKm}/1`
+    `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${west},${south},${east},${north}/1`
   )
   if (!res.ok) {
     throw new Error(`NASA FIRMS API error: ${res.status} ${res.statusText}`)

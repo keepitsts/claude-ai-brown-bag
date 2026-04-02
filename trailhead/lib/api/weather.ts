@@ -33,6 +33,8 @@ export async function fetchCurrentWeather(lat: number, lng: number): Promise<Cur
     longitude: lng.toString(),
     current: 'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
     daily: 'uv_index_max',
+    temperature_unit: 'fahrenheit',
+    wind_speed_unit: 'mph',
     timezone: 'auto',
     forecast_days: '1',
   })
@@ -62,6 +64,7 @@ export async function fetchDailyForecast(lat: number, lng: number, days = 7): Pr
     latitude: lat.toString(),
     longitude: lng.toString(),
     daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code',
+    temperature_unit: 'fahrenheit',
     timezone: 'auto',
     forecast_days: days.toString(),
   })
