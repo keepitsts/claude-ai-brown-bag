@@ -12,4 +12,5 @@ Sequential record of all prompts and actions used to build this repo. Each file 
 | 004 | research | 100 Free APIs and Datasets list |
 | 005 | research | STS Demo Spec - Federal Lands Daily Briefing Tool |
 | 006 | research | TRAILHEAD Tech Stack Decision Record |
-| 007 | claude-prompt | Initial setup prompt (ai-brown-bag.md) — this prompt |
+| 007 | claude-prompt | Initial setup prompt (ai-brown-bag.md) |
+| 008 | claude-prompt | Fix response approach — responses go in prompt files |

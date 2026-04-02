@@ -8,7 +8,7 @@ This repo demonstrates what can be accomplished using Claude Code. It was built 
 
 - **All actions** on this repo are performed by Claude Code
 - **All prompts** given to Claude are recorded in `prompts/` with sequential numbering
-- **All responses** are written to `response.md` in the project root (not the Claude Code terminal)
+- **All responses** are included in the corresponding prompt file under a `## Response` section
 - Research artifacts live in `research/`
 - Claude Code documentation lives in `ai-docs/`
 
@@ -24,10 +24,7 @@ Each prompt file contains:
 - Timestamp
 - Type (human-action, claude-prompt, research)
 - Summary of what was accomplished
-
-## Response Behavior
-
-Claude Code writes responses to `response.md` in the project root instead of outputting to the terminal window. This is enforced via a settings hook.
+- A `## Response` section with Claude's response (for claude-prompt types)
 
 ## Tech Stack (for the demo app - TRAILHEAD)
 
