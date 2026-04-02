@@ -21,3 +21,4 @@ Sequential record of all prompts and actions used to build this repo. Each file 
 | 013 | claude-prompt | Updated prompt 010 with full build results |
 | 014 | claude-prompt | Started dev server (pnpm dev on port 3001) |
 | 015 | claude-prompt | Fixed fire API (bbox), crime API (endpoint+dates), weather (Fahrenheit) |
+| 016 | claude-prompt | Debugged briefing error — Anthropic API key has no credits |
