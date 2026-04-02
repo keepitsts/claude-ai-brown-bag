@@ -1,19 +1,11 @@
 'use client'
 
-import {
-  Sun,
-} from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useLocationStore } from '@/stores/location-store'
 import { WeatherCard } from '@/components/dashboard/weather-card'
 import { SeismicCard } from '@/components/dashboard/seismic-card'
 import { FiresCard } from '@/components/dashboard/fires-card'
 import { CrimeCard } from '@/components/dashboard/crime-card'
-
-const dataCards = [
-  { title: 'Astronomy', icon: Sun },
-]
+import { AstronomyCard } from '@/components/dashboard/astronomy-card'
 
 export function DashboardContent() {
   const selectedLocation = useLocationStore((s) => s.selectedLocation)
@@ -37,29 +29,7 @@ export function DashboardContent() {
         <SeismicCard />
         <FiresCard />
         <CrimeCard />
-        {dataCards.map(({ title, icon: Icon }) => (
-          <Card key={title}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Icon className="size-4 text-muted-foreground" />
-                {title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedLocation ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Select a location to view data
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+        <AstronomyCard />
       </div>
     </div>
   )
