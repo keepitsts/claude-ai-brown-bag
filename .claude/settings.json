@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [],
+    "PostToolUse": [],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'REMINDER: Write your response to response.md, not the terminal.'"
+          }
+        ]
+      }
+    ]
+  }
+}
