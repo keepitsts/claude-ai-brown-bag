@@ -21,10 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
-      <body className="flex h-full font-sans">
+      <body className="flex h-full flex-col font-sans md:flex-row">
         <Providers>
           <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-muted/30">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-muted/30">
             {children}
           </main>
         </Providers>

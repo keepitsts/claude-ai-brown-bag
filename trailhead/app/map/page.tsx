@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { MapPin } from 'lucide-react'
-import { useLocationStore } from '@/stores/locationStore'
+import { useLocationStore } from '@/stores/location-store'
 
 const SituationalMap = dynamic(
   () => import('@/components/map/situational-map').then((m) => m.SituationalMap),
@@ -51,7 +51,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-[calc(100vh-0px)]">
+    <div className="relative h-full">
       <SituationalMap />
       <MapLegend />
     </div>
