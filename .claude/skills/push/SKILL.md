@@ -5,7 +5,7 @@ disable-model-invocation: true
 allowed-tools: Bash(git *)
 ---
 
-Push current changes to the remote repository. Follow these steps exactly:
+Push current changes directly to main. This is a single-developer repo — no feature branches or PRs.
 
 1. Run `git status` to see what changed
 2. Run `git diff --stat` to understand the scope of changes
@@ -14,7 +14,7 @@ Push current changes to the remote repository. Follow these steps exactly:
 5. Write a concise commit message that describes what changed and why
 6. If the user provided a message in $ARGUMENTS, use that as the commit message instead
 7. Commit with the message, appending: `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
-8. Push to the remote
+8. Push to main
 
 Use a HEREDOC for the commit message to preserve formatting:
 ```
