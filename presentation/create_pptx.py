@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""Generate the TRAILHEAD brown bag presentation."""
+"""Generate the brown bag presentation — focused on the engineering process."""
 
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
+from lxml import etree
+from pptx.oxml.ns import qn
 
-# Brand colors
+# Colors
 NAVY = RGBColor(0x1B, 0x2A, 0x4A)
 DARK_BLUE = RGBColor(0x2D, 0x3E, 0x6B)
-ACCENT_BLUE = RGBColor(0x3B, 0x82, 0xF6)
-ACCENT_GREEN = RGBColor(0x10, 0xB9, 0x81)
-LIGHT_GRAY = RGBColor(0xF1, 0xF5, 0xF9)
+ACCENT = RGBColor(0x3B, 0x82, 0xF6)
+GREEN = RGBColor(0x10, 0xB9, 0x81)
+LIGHT = RGBColor(0xF1, 0xF5, 0xF9)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-DARK_TEXT = RGBColor(0x1E, 0x29, 0x3B)
-MEDIUM_TEXT = RGBColor(0x47, 0x55, 0x69)
-SUBTLE_TEXT = RGBColor(0x94, 0xA3, 0xB8)
+DARK = RGBColor(0x1E, 0x29, 0x3B)
+MED = RGBColor(0x47, 0x55, 0x69)
+SUBTLE = RGBColor(0x94, 0xA3, 0xB8)
 ORANGE = RGBColor(0xF5, 0x9E, 0x0B)
-RED_ACCENT = RGBColor(0xEF, 0x44, 0x44)
+RED = RGBColor(0xEF, 0x44, 0x44)
 
 prs = Presentation()
 prs.slide_width = Inches(13.333)
@@ -27,754 +29,714 @@ W = prs.slide_width
 H = prs.slide_height
 
 
-def add_bg(slide, color):
-    """Set slide background color."""
-    bg = slide.background
-    fill = bg.fill
-    fill.solid()
-    fill.fore_color.rgb = color
+def bg(slide, color):
+    slide.background.fill.solid()
+    slide.background.fill.fore_color.rgb = color
 
 
-def add_shape(slide, left, top, width, height, color, alpha=None):
-    """Add a colored rectangle."""
-    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = color
-    shape.line.fill.background()
-    return shape
+def rect(slide, l, t, w, h, color):
+    s = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, l, t, w, h)
+    s.fill.solid()
+    s.fill.fore_color.rgb = color
+    s.line.fill.background()
+    return s
 
 
-def add_text(slide, text, left, top, width, height, font_size=18,
-             color=DARK_TEXT, bold=False, alignment=PP_ALIGN.LEFT,
-             font_name="Calibri"):
-    """Add a text box."""
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
+def txt(slide, text, l, t, w, h, size=18, color=DARK, bold=False,
+        align=PP_ALIGN.LEFT, font="Calibri"):
+    tb = slide.shapes.add_textbox(l, t, w, h)
+    tb.text_frame.word_wrap = True
+    p = tb.text_frame.paragraphs[0]
     p.text = text
-    p.font.size = Pt(font_size)
+    p.font.size = Pt(size)
     p.font.color.rgb = color
     p.font.bold = bold
-    p.font.name = font_name
-    p.alignment = alignment
-    return txBox
+    p.font.name = font
+    p.alignment = align
+    return tb
 
 
-def add_bullet_list(slide, items, left, top, width, height, font_size=18,
-                    color=DARK_TEXT, spacing=Pt(8), font_name="Calibri",
-                    bullet_color=None):
-    """Add a bulleted list."""
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
+def multi_txt(slide, lines, l, t, w, h, size=16, color=DARK, spacing=Pt(6),
+              font="Calibri", bold=False):
+    """Multiple paragraphs in one text box."""
+    tb = slide.shapes.add_textbox(l, t, w, h)
+    tf = tb.text_frame
     tf.word_wrap = True
-    for i, item in enumerate(items):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
-        p.text = item
-        p.font.size = Pt(font_size)
+    for i, line in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = line
+        p.font.size = Pt(size)
         p.font.color.rgb = color
-        p.font.name = font_name
+        p.font.name = font
+        p.font.bold = bold
         p.space_after = spacing
-        p.level = 0
-        # Bullet character
-        pPr = p._pPr
-        if pPr is None:
-            from pptx.oxml.ns import qn
-            pPr = p._p.get_or_add_pPr()
-        from pptx.oxml.ns import qn
-        buNone = pPr.findall(qn('a:buNone'))
-        for bn in buNone:
-            pPr.remove(bn)
-        buChar = pPr.find(qn('a:buChar'))
-        if buChar is None:
-            from lxml import etree
-            buChar = etree.SubElement(pPr, qn('a:buChar'))
-        buChar.set('char', '\u2022')
-        if bullet_color:
-            buClr = pPr.find(qn('a:buClr'))
-            if buClr is None:
-                buClr = etree.SubElement(pPr, qn('a:buClr'))
-            else:
-                buClr.clear()
-            from lxml import etree as et2
-            srgb = et2.SubElement(buClr, qn('a:srgbClr'))
-            srgb.set('val', '%02X%02X%02X' % (bullet_color[0], bullet_color[1], bullet_color[2]))
-    return txBox
+    return tb
 
 
-def add_numbered_list(slide, items, left, top, width, height, font_size=18,
-                      color=DARK_TEXT, num_color=ACCENT_BLUE):
-    """Add a numbered list with colored numbers."""
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
-    tf.word_wrap = True
+def arrow_chain(slide, items, top, left_start, item_w, gap, box_color, text_color,
+                arrow_color=SUBTLE, size=13):
+    """Draw a chain of boxes with arrows between them."""
     for i, item in enumerate(items):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
-        p.space_after = Pt(6)
-        # Number run
-        run_num = p.add_run()
-        run_num.text = f"{i+1}.  "
-        run_num.font.size = Pt(font_size)
-        run_num.font.color.rgb = num_color
-        run_num.font.bold = True
-        run_num.font.name = "Calibri"
-        # Text run
-        run_txt = p.add_run()
-        run_txt.text = item
-        run_txt.font.size = Pt(font_size)
-        run_txt.font.color.rgb = color
-        run_txt.font.name = "Calibri"
-    return txBox
-
-
-def add_stat_card(slide, number, label, left, top, width=Inches(2.5),
-                  height=Inches(1.6), num_color=ACCENT_BLUE):
-    """Add a stat card with big number and label."""
-    card = add_shape(slide, left, top, width, height, WHITE)
-    # Number
-    add_text(slide, number, left + Inches(0.2), top + Inches(0.15),
-             width - Inches(0.4), Inches(0.8), font_size=44,
-             color=num_color, bold=True, alignment=PP_ALIGN.CENTER)
-    # Label
-    add_text(slide, label, left + Inches(0.2), top + Inches(0.9),
-             width - Inches(0.4), Inches(0.5), font_size=14,
-             color=MEDIUM_TEXT, alignment=PP_ALIGN.CENTER)
-    return card
+        left = left_start + (item_w + gap) * i
+        rect(slide, left, top, item_w, Inches(0.45), box_color)
+        txt(slide, item, left, top, item_w, Inches(0.45),
+            size=size, color=text_color, bold=True, align=PP_ALIGN.CENTER)
+        if i < len(items) - 1:
+            arrow_left = left + item_w + Inches(0.02)
+            txt(slide, "\u2192", arrow_left, top - Inches(0.02), Inches(gap - 0.04),
+                Inches(0.45), size=18, color=arrow_color, bold=True, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
 # SLIDE 1: Title
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
-add_bg(slide, NAVY)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, NAVY)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-# Accent bar at top
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+txt(s, "Building the System\nThat Builds the System",
+    Inches(1.5), Inches(1.5), Inches(10), Inches(2),
+    size=48, color=WHITE, bold=True)
 
-# Title
-add_text(slide, "Building with Claude Code", Inches(1.5), Inches(1.8),
-         Inches(10), Inches(1.2), font_size=52, color=WHITE, bold=True)
+rect(s, Inches(1.5), Inches(3.7), Inches(2.5), Inches(0.04), ACCENT)
 
-# Subtitle
-add_text(slide, "From Idea to Deployed App in One Afternoon",
-         Inches(1.5), Inches(3.0), Inches(10), Inches(0.6),
-         font_size=24, color=SUBTLE_TEXT)
+txt(s, "A Software Engineer's Guide to Claude Code",
+    Inches(1.5), Inches(4.1), Inches(10), Inches(0.6),
+    size=22, color=SUBTLE)
 
-# Divider line
-add_shape(slide, Inches(1.5), Inches(3.9), Inches(2), Inches(0.04), ACCENT_BLUE)
-
-# Presenter info
-add_text(slide, "Rudy Zauel  |  Simple Technology Solutions",
-         Inches(1.5), Inches(4.3), Inches(8), Inches(0.5),
-         font_size=18, color=SUBTLE_TEXT)
-add_text(slide, "Brown Bag  |  April 3, 2026",
-         Inches(1.5), Inches(4.8), Inches(8), Inches(0.5),
-         font_size=16, color=SUBTLE_TEXT)
+txt(s, "Rudy Zauel  |  Simple Technology Solutions  |  April 3, 2026",
+    Inches(1.5), Inches(5.0), Inches(8), Inches(0.5),
+    size=16, color=SUBTLE)
 
 
 # ============================================================
-# SLIDE 2: The Problem
+# SLIDE 2: The Question
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "The Problem", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
+txt(s, "The Experiment", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
+    size=36, color=NAVY, bold=True)
 
-# Big quote
-add_text(slide, (
-    '"Your officers cover 20% of U.S. landmass across 855+ locations.\n'
-    'Before every shift, someone needs to know: weather, fires, earthquakes,\n'
-    'crime trends, sunrise/sunset. That information exists across six\n'
-    'different government websites. Nobody checks all six."'
-), Inches(1.2), Inches(1.8), Inches(10.5), Inches(2.5),
-    font_size=22, color=DARK_BLUE, font_name="Calibri")
+txt(s, (
+    "I had a spec for a 7-feature application with 6 API integrations.\n"
+    "Can Claude Code just... build it while I walk my dog?"
+), Inches(1.2), Inches(1.8), Inches(10.5), Inches(1.2),
+    size=22, color=DARK_BLUE)
 
-# The six sources as a grid
-sources = [
-    ("Open-Meteo", "Weather & Forecasts"),
-    ("USGS", "Earthquake Activity"),
-    ("NASA FIRMS", "Wildfire Detection"),
-    ("FBI Crime Data", "Crime Statistics"),
-    ("Nominatim / OSM", "Geocoding"),
-    ("Open-Meteo", "Astronomy & Visibility"),
+# The naive approach
+rect(s, Inches(1), Inches(3.5), Inches(5.3), Inches(3.2), LIGHT)
+txt(s, "What I Wanted", Inches(1.3), Inches(3.6), Inches(4.5), Inches(0.4),
+    size=18, color=NAVY, bold=True)
+multi_txt(s, [
+    '"Here\'s my spec. Build it."',
+    "Go walk Milo (28lb Cavapoo).",
+    "Come back to a working app.",
+], Inches(1.5), Inches(4.2), Inches(4.5), Inches(2.0),
+    size=16, color=MED)
+
+# What actually happens
+rect(s, Inches(7), Inches(3.5), Inches(5.3), Inches(3.2), NAVY)
+txt(s, "What Actually Happens", Inches(7.3), Inches(3.6), Inches(4.5), Inches(0.4),
+    size=18, color=RED, bold=True)
+multi_txt(s, [
+    "Context window fills up by feature 4.",
+    "It forgets patterns from feature 1.",
+    "Mistakes compound without verification.",
+    "Quality degrades well before the limit.",
+    "You come back to a mess.",
+], Inches(7.5), Inches(4.2), Inches(4.5), Inches(2.5),
+    size=16, color=SUBTLE)
+
+
+# ============================================================
+# SLIDE 3: The Insight
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, NAVY)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "The insight:", Inches(1), Inches(1.5), Inches(11.3), Inches(0.8),
+    size=24, color=SUBTLE)
+
+txt(s, "I needed to build the system\nthat would build the system.",
+    Inches(1), Inches(2.3), Inches(11.3), Inches(1.5),
+    size=40, color=WHITE, bold=True, align=PP_ALIGN.LEFT)
+
+rect(s, Inches(1), Inches(4.3), Inches(11.3), Inches(0.04), ACCENT)
+
+txt(s, (
+    "Not one giant prompt. A pipeline of markdown artifacts — "
+    "each one the input to the next — that refines an idea "
+    "into a deployable application."
+), Inches(1), Inches(4.7), Inches(11.3), Inches(1.0),
+    size=20, color=SUBTLE)
+
+
+# ============================================================
+# SLIDE 4: The Refinement Chain
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "The Refinement Chain", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
+    size=36, color=NAVY, bold=True)
+
+txt(s, "Each markdown file was the input that produced the next one",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4),
+    size=18, color=MED)
+
+chain = [
+    ("Company\nBriefing", "Who is STS?\nWhat do they care about?", "research/", ACCENT),
+    ("Demo Spec", "7 features, 6 APIs,\ntarget persona, scope", "research/", ACCENT),
+    ("Tech Stack\nDecision Record", "Every choice with\nrationale, not just 'use React'", "research/", ACCENT),
+    ("Build Process\nResearch", "What agentic harness?\nHeadless pipeline recommended", "research/", ORANGE),
+    ("CLAUDE.md +\n11 Build Prompts", "Conventions + per-feature\nspec files", "build/prompts/", GREEN),
+    ("Working\nApplication", "4,455 lines, 58 files,\n7 features, deployed", "trailhead/", GREEN),
 ]
 
-for i, (name, desc) in enumerate(sources):
-    col = i % 3
-    row = i // 3
-    left = Inches(1.2) + Inches(3.6) * col
-    top = Inches(4.6) + Inches(1.1) * row
-    card = add_shape(slide, left, top, Inches(3.2), Inches(0.9), LIGHT_GRAY)
-    add_text(slide, name, left + Inches(0.2), top + Inches(0.08),
-             Inches(2.8), Inches(0.35), font_size=15, color=NAVY, bold=True)
-    add_text(slide, desc, left + Inches(0.2), top + Inches(0.45),
-             Inches(2.8), Inches(0.35), font_size=13, color=MEDIUM_TEXT)
+for i, (title, desc, loc, color) in enumerate(chain):
+    left = Inches(0.5) + Inches(2.1) * i
+    top = Inches(2.2)
+
+    # Card
+    rect(s, left, top, Inches(1.9), Inches(2.8), LIGHT)
+    rect(s, left, top, Inches(1.9), Inches(0.06), color)
+
+    # Number
+    txt(s, str(i + 1), left + Inches(0.15), top + Inches(0.2),
+        Inches(0.4), Inches(0.4), size=20, color=color, bold=True)
+
+    # Title
+    txt(s, title, left + Inches(0.15), top + Inches(0.6),
+        Inches(1.6), Inches(0.7), size=14, color=NAVY, bold=True)
+
+    # Description
+    txt(s, desc, left + Inches(0.15), top + Inches(1.5),
+        Inches(1.6), Inches(0.8), size=11, color=MED)
+
+    # Location
+    txt(s, loc, left + Inches(0.15), top + Inches(2.4),
+        Inches(1.6), Inches(0.3), size=10, color=SUBTLE, font="Consolas")
+
+    # Arrow between cards
+    if i < len(chain) - 1:
+        arrow_l = left + Inches(1.95)
+        txt(s, "\u2192", arrow_l, top + Inches(1.0), Inches(0.2), Inches(0.5),
+            size=22, color=SUBTLE, bold=True, align=PP_ALIGN.CENTER)
+
+# Bottom insight
+rect(s, Inches(0.5), Inches(5.5), Inches(12.3), Inches(1.2), NAVY)
+txt(s, "Every artifact was a markdown file.  The entire process is in the repo.",
+    Inches(1), Inches(5.7), Inches(11.3), Inches(0.5),
+    size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+txt(s, "prompts/001 through prompts/017  |  research/*.md  |  build/prompts/00-10",
+    Inches(1), Inches(6.2), Inches(11.3), Inches(0.4),
+    size=14, color=SUBTLE, align=PP_ALIGN.CENTER, font="Consolas")
 
 
 # ============================================================
-# SLIDE 3: Meet TRAILHEAD
+# SLIDE 5: Step 1 — Research First
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "Meet TRAILHEAD", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
+txt(s, "Step 1:  Research First, Code Later", Inches(1), Inches(0.6),
+    Inches(11), Inches(0.7), size=36, color=NAVY, bold=True)
 
-add_text(slide, "Federal Lands Daily Briefing Tool", Inches(1), Inches(1.25),
-         Inches(11), Inches(0.5), font_size=20, color=ACCENT_BLUE)
+txt(s, "I used claude.ai (with web search) for research, Claude Code for implementation",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
 
-# Description
-add_text(slide, (
-    "An AI-powered situational awareness tool that pulls real-time data from "
-    "six public APIs and uses Claude to synthesize everything into a single, "
-    "actionable briefing — like a morning roll call briefing that writes itself."
-), Inches(1), Inches(2.0), Inches(11), Inches(1.0),
-    font_size=18, color=MEDIUM_TEXT)
-
-# 7 features in two columns
-features_left = [
-    "F1  Location Selector — 25 federal land sites across 6 agencies",
-    "F2  Real-Time Dashboard — weather, seismic, fire, crime, astronomy",
-    "F3  AI Daily Briefing — Claude synthesizes all data into a roll call briefing",
-    "F4  Interactive Map — Leaflet map with fire and earthquake overlays",
+# Three research artifacts
+artifacts = [
+    ("Company Briefing",
+     "simple-technology-solutions-a-pre-presentation-briefing...md",
+     [
+         "Who is STS? $60M DOI contract, 3,000 officers, 855+ locations",
+         "Their AI products: C-CAT, LEI, A\u00b3",
+         "Culture: mission-first, 'Keep IT Simple'",
+         "Key people and what they care about",
+     ]),
+    ("Demo Spec",
+     "sts-demo-spec.md",
+     [
+         "7 features defined in detail (F1\u2013F7)",
+         "6 free APIs identified with auth requirements",
+         "Target persona: DOI law enforcement officer",
+         "What the demo IS and IS NOT",
+         "Success criteria for the presentation",
+     ]),
+    ("Tech Stack Decision Record",
+     "trailhead-tech-stack.md",
+     [
+         "Every choice documented with rationale",
+         "Not 'use React' but 'why Next.js App Router'",
+         "State management: Zustand + TanStack Query and why",
+         "What was deliberately left out (database, auth, tests)",
+         "Full dependency list and project structure",
+     ]),
 ]
-features_right = [
-    "F5  Briefing History — browse and compare past briefings",
-    "F6  Multi-Location Watch List — monitor multiple sites at once",
-    "F7  Shareable Export — copy or print-friendly briefing output",
+
+for i, (title, filename, items) in enumerate(artifacts):
+    left = Inches(0.7) + Inches(4.1) * i
+    top = Inches(2.2)
+
+    rect(s, left, top, Inches(3.8), Inches(4.5), LIGHT)
+    rect(s, left, top, Inches(3.8), Inches(0.06), ACCENT)
+
+    txt(s, title, left + Inches(0.3), top + Inches(0.2),
+        Inches(3.2), Inches(0.4), size=20, color=NAVY, bold=True)
+
+    txt(s, filename, left + Inches(0.3), top + Inches(0.65),
+        Inches(3.2), Inches(0.3), size=10, color=SUBTLE, font="Consolas")
+
+    for j, item in enumerate(items):
+        txt(s, f"\u2022  {item}", left + Inches(0.3), top + Inches(1.1) + Inches(0.42) * j,
+            Inches(3.2), Inches(0.4), size=13, color=MED)
+
+
+# ============================================================
+# SLIDE 6: Step 2 — Research the Build Process
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, 'Step 2:  "I Need an Agentic Harness"', Inches(1), Inches(0.6),
+    Inches(11), Inches(0.7), size=36, color=NAVY, bold=True)
+
+txt(s, "Before writing any code, I researched how to make Claude Code build reliably",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
+
+# The research prompt excerpt
+rect(s, Inches(0.8), Inches(2.0), Inches(7.2), Inches(4.8), LIGHT)
+txt(s, "The Research Prompt I Wrote", Inches(1.1), Inches(2.1),
+    Inches(6), Inches(0.4), size=16, color=NAVY, bold=True)
+
+prompt_lines = [
+    "What I want:  give the spec to Claude Code, walk my dog, come back to a working app.",
+    "",
+    "What I know won't work:  Claude Code won't build 7 features in one prompt.",
+    "Context fills up. It forgets patterns. Mistakes compound.",
+    "",
+    "What I need:  an approach that decomposes the spec into right-sized units,",
+    "sequences the build, verifies each unit, and minimizes human intervention.",
+    "",
+    "Evaluate:  single session, headless orchestration, Agent SDK pipeline,",
+    "/batch, agent teams, custom subagents, or something I haven't thought of.",
+    "",
+    "Be opinionated \u2014 I want 'here's what you should do' not '5 options to consider.'",
+]
+multi_txt(s, prompt_lines, Inches(1.1), Inches(2.6), Inches(6.8), Inches(4.0),
+    size=13, color=MED, font="Consolas", spacing=Pt(3))
+
+# What the research recommended
+rect(s, Inches(8.3), Inches(2.0), Inches(4.3), Inches(4.8), NAVY)
+txt(s, "The Recommendation", Inches(8.6), Inches(2.1),
+    Inches(3.7), Inches(0.4), size=16, color=ACCENT, bold=True)
+
+rec_items = [
+    ("Sequential headless pipeline", "claude -p with fresh context per feature"),
+    ("TypeScript verification gates", "tsc --noEmit + build between every step"),
+    ("Auto-commit on success", "Clean git history, one commit per feature"),
+    ("CLAUDE.md under 80 lines", "Persistent memory across fresh contexts"),
+    ("11 self-contained prompts", "Each prompt file is a complete feature spec"),
 ]
 
-for i, feat in enumerate(features_left):
-    top = Inches(3.2) + Inches(0.55) * i
-    add_shape(slide, Inches(1), top, Inches(0.08), Inches(0.35), ACCENT_GREEN)
-    add_text(slide, feat, Inches(1.3), top, Inches(5.2), Inches(0.45),
-             font_size=15, color=DARK_TEXT)
+for i, (title, desc) in enumerate(rec_items):
+    top = Inches(2.7) + Inches(0.75) * i
+    txt(s, title, Inches(8.6), top, Inches(3.7), Inches(0.35),
+        size=15, color=WHITE, bold=True)
+    txt(s, desc, Inches(8.6), top + Inches(0.3), Inches(3.7), Inches(0.35),
+        size=12, color=SUBTLE)
 
-for i, feat in enumerate(features_right):
-    top = Inches(3.2) + Inches(0.55) * i
-    add_shape(slide, Inches(7), top, Inches(0.08), Inches(0.35), ACCENT_GREEN)
-    add_text(slide, feat, Inches(7.3), top, Inches(5.2), Inches(0.45),
-             font_size=15, color=DARK_TEXT)
-
-# Live URL
-add_shape(slide, Inches(1), Inches(5.8), Inches(11.3), Inches(0.8), NAVY)
-add_text(slide, "LIVE NOW    trailhead-pearl.vercel.app",
-         Inches(1), Inches(5.85), Inches(11.3), Inches(0.7),
-         font_size=22, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+# Rejected options
+txt(s, "Rejected: Agent Teams (experimental, unstable), /batch (can't handle shared\n"
+       "dependencies), single long session (context degrades by feature 4)",
+    Inches(8.6), Inches(6.0), Inches(3.7), Inches(0.7),
+    size=11, color=SUBTLE)
 
 
 # ============================================================
-# SLIDE 4: Live Demo (placeholder)
+# SLIDE 7: Step 3 — CLAUDE.md
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, NAVY)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "Live Demo", Inches(1), Inches(2.5), Inches(11.3), Inches(1),
-         font_size=52, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+txt(s, "Step 3:  CLAUDE.md \u2014 50 Lines of Persistent Memory",
+    Inches(1), Inches(0.6), Inches(11), Inches(0.7),
+    size=36, color=NAVY, bold=True)
 
-add_text(slide, "trailhead-pearl.vercel.app", Inches(1), Inches(3.7),
-         Inches(11.3), Inches(0.6), font_size=24, color=ACCENT_BLUE,
-         alignment=PP_ALIGN.CENTER)
+txt(s, "Every fresh claude -p call loads this file. It's how conventions survive across context windows.",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
+
+# Show the actual CLAUDE.md content
+rect(s, Inches(0.8), Inches(2.0), Inches(7.5), Inches(5.0), RGBColor(0x0D, 0x11, 0x17))
+
+claude_md = [
+    "# TRAILHEAD \u2014 Federal Lands Daily Briefing Tool",
+    "",
+    "## Tech Stack",
+    "- Next.js 15 App Router, TypeScript strict",
+    "- Tailwind CSS v4 (CSS-based config, NOT tailwind.config.js)",
+    "- shadcn/ui, Zustand for client state, TanStack Query v5",
+    "",
+    "## Critical Conventions",
+    "- Server Components by default. 'use client' ONLY for interactivity",
+    "- Next.js 15: params are Promises \u2014 must await",
+    "- React Leaflet REQUIRES dynamic import with ssr: false",
+    "- Data flow: lib/api/ \u2192 app/api/ route \u2192 TanStack Query hook \u2192 component",
+    "- Named exports. Conventional commits (feat:, fix:, refactor:)",
+    "",
+    "## Verification (run after every feature)",
+    "npx tsc --noEmit && npm run build",
+]
+multi_txt(s, claude_md, Inches(1.1), Inches(2.2), Inches(7.0), Inches(4.5),
+    size=13, color=GREEN, font="Consolas", spacing=Pt(2))
+
+# Why it matters
+rect(s, Inches(8.8), Inches(2.0), Inches(3.8), Inches(5.0), LIGHT)
+txt(s, "Why This Matters", Inches(9.1), Inches(2.2), Inches(3.2), Inches(0.4),
+    size=18, color=NAVY, bold=True)
+
+insights = [
+    "Each feature builds in a fresh context window \u2014 no memory of previous features",
+    "CLAUDE.md is the only thing that carries forward",
+    "It tells Claude the patterns, not the history",
+    "Under 80 lines \u2014 every line competes for the model's attention",
+    "Claude rediscovers the codebase from the filesystem, guided by these conventions",
+    "The data flow pattern (lib/api \u2192 route \u2192 hook \u2192 component) kept all 11 features consistent",
+]
+for i, insight in enumerate(insights):
+    top = Inches(2.9) + Inches(0.6) * i
+    rect(s, Inches(9.1), top, Inches(0.06), Inches(0.4), ACCENT)
+    txt(s, insight, Inches(9.4), top, Inches(3.0), Inches(0.5),
+        size=12, color=MED)
+
+
+# ============================================================
+# SLIDE 8: Step 4 — The Build Pipeline
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "Step 4:  The Build Pipeline", Inches(1), Inches(0.6),
+    Inches(11), Inches(0.7), size=36, color=NAVY, bold=True)
+
+txt(s, "A 30-line bash script that runs 11 headless Claude Code calls",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
+
+# build.sh pseudocode
+rect(s, Inches(0.8), Inches(2.0), Inches(6.5), Inches(4.8), RGBColor(0x0D, 0x11, 0x17))
+
+build_code = [
+    "#!/bin/bash",
+    "",
+    "build_step() {",
+    "  local step_name=\"$1\"",
+    "  local prompt=\"$2\"",
+    "",
+    "  # Fresh context window for each feature",
+    "  claude -p \"$prompt\" \\",
+    '    --allowedTools "Read,Write,Edit,Bash,Glob,Grep"',
+    "",
+    "  # Verification gate",
+    "  npx tsc --noEmit",
+    "  pnpm build",
+    "",
+    "  # Only commit on success",
+    '  git add -A && git commit -m "feat: $step_name"',
+    "}",
+    "",
+    "# Run all 11 features sequentially",
+    'build_step "scaffold"    "$(cat build/prompts/00-scaffold.md)"',
+    'build_step "shared-infra" "$(cat build/prompts/01-shared-infra.md)"',
+    'build_step "base-layout" "$(cat build/prompts/02-base-layout.md)"',
+    "# ... through 10-integration.md",
+]
+multi_txt(s, build_code, Inches(1.0), Inches(2.2), Inches(6.0), Inches(4.5),
+    size=12, color=GREEN, font="Consolas", spacing=Pt(1))
+
+# The 11 steps with results
+rect(s, Inches(7.8), Inches(2.0), Inches(4.8), Inches(4.8), LIGHT)
+txt(s, "11 Steps, 0 Failures", Inches(8.1), Inches(2.1),
+    Inches(4.2), Inches(0.4), size=18, color=NAVY, bold=True)
 
 steps = [
-    "Select a location  (Yellowstone National Park)",
-    "View the real-time conditions dashboard",
-    "Generate an AI briefing  —  watch Claude synthesize live data",
-    "Explore the interactive map  (fire + earthquake markers)",
-    "Browse briefing history and watchlist",
+    ("00", "Scaffold", "Next.js 15 + Tailwind v4 + shadcn/ui"),
+    ("01", "Shared Infra", "Types, API clients, stores, locations"),
+    ("02", "Base Layout", "Sidebar, location selector, dashboard shell"),
+    ("03", "Weather", "Open-Meteo + 15min auto-refresh"),
+    ("04", "Seismic", "USGS earthquakes + 5min refresh"),
+    ("05", "Fires", "NASA FIRMS + CSV parsing"),
+    ("06", "Crime", "FBI Crime Data + rate aggregation"),
+    ("07", "Astronomy", "Sunrise/sunset/moon phase"),
+    ("08", "Map", "React Leaflet + fire/earthquake markers"),
+    ("09", "Briefing", "Claude API streaming + 5-section format"),
+    ("10", "Integration", "Watch list, responsive, error boundaries"),
 ]
 
-for i, step in enumerate(steps):
-    top = Inches(4.6) + Inches(0.42) * i
-    txBox = slide.shapes.add_textbox(Inches(3), top, Inches(7.3), Inches(0.4))
-    tf = txBox.text_frame
-    p = tf.paragraphs[0]
-    run1 = p.add_run()
-    run1.text = f"{i+1}  "
-    run1.font.size = Pt(16)
-    run1.font.color.rgb = ACCENT_BLUE
-    run1.font.bold = True
-    run1.font.name = "Calibri"
-    run2 = p.add_run()
-    run2.text = step
-    run2.font.size = Pt(16)
-    run2.font.color.rgb = SUBTLE_TEXT
-    run2.font.name = "Calibri"
+for i, (num, name, detail) in enumerate(steps):
+    top = Inches(2.65) + Inches(0.37) * i
+    txt(s, num, Inches(8.1), top, Inches(0.4), Inches(0.3),
+        size=11, color=ACCENT, bold=True, font="Consolas")
+    txt(s, name, Inches(8.5), top, Inches(1.5), Inches(0.3),
+        size=12, color=NAVY, bold=True)
+    txt(s, detail, Inches(10.0), top, Inches(2.4), Inches(0.3),
+        size=11, color=MED)
 
 
 # ============================================================
-# SLIDE 5: The Reveal — How It Was Built
+# SLIDE 9: What a Build Prompt Looks Like
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "How It Was Built", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
+txt(s, "What a Build Prompt Looks Like", Inches(1), Inches(0.6),
+    Inches(11), Inches(0.7), size=36, color=NAVY, bold=True)
 
-# Big reveal stat
-add_shape(slide, Inches(1), Inches(1.6), Inches(11.3), Inches(1.8), NAVY)
+txt(s, "Each of the 11 prompts is a self-contained feature spec (~200-400 words)",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
 
-add_text(slide, "One afternoon.  One developer.  One AI.",
-         Inches(1), Inches(1.75), Inches(11.3), Inches(0.7),
-         font_size=32, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+# Example prompt structure
+rect(s, Inches(0.8), Inches(2.0), Inches(7.5), Inches(5.0), RGBColor(0x0D, 0x11, 0x17))
 
-add_text(slide, "Not a mockup — a working application pulling live data from 6 APIs, deployed to the internet.",
-         Inches(2), Inches(2.55), Inches(9.3), Inches(0.7),
-         font_size=16, color=SUBTLE_TEXT, alignment=PP_ALIGN.CENTER)
+prompt_example = [
+    "# Feature: USGS Earthquake Monitoring",
+    "",
+    "## What to build",
+    "- API route at app/api/seismic/route.ts",
+    "- Earthquake list component with magnitude-coded badges",
+    "- Map overlay with circle markers sized by magnitude",
+    "- TanStack Query hook in hooks/useSeismic.ts",
+    "",
+    "## API Details",
+    "- Endpoint: https://earthquake.usgs.gov/fdsnws/event/1/query",
+    "- Parameters: format=geojson, latitude, longitude, maxradiuskm",
+    "- No authentication required",
+    "",
+    "## Patterns to follow     \u2190 THIS IS THE KEY SECTION",
+    "- See lib/api/weather.ts for API client wrapper pattern",
+    "- See app/api/weather/route.ts for route handler pattern",
+    "- See hooks/useWeather.ts for TanStack Query hook pattern",
+    "",
+    "## Scope Control",
+    "- Implement ONLY what is specified above",
+    "- Do not add features beyond these requirements",
+]
+multi_txt(s, prompt_example, Inches(1.0), Inches(2.2), Inches(7.0), Inches(4.6),
+    size=13, color=GREEN, font="Consolas", spacing=Pt(1))
 
-# Stats row
+# Annotations
+rect(s, Inches(8.8), Inches(2.0), Inches(3.8), Inches(5.0), LIGHT)
+txt(s, "Key Elements", Inches(9.1), Inches(2.2), Inches(3.2), Inches(0.4),
+    size=18, color=NAVY, bold=True)
+
+elements = [
+    ('"Patterns to follow"', "Points Claude to existing code.\nIt reads those files first,\nthen follows the same structure."),
+    ('"API Details"', "Exact endpoints, parameters,\nauth requirements. No guessing."),
+    ('"What to build"', "Concrete deliverables.\nFiles that should exist when done."),
+    ('"Scope Control"', "Prevents Claude from adding\nauth, dark mode, i18n, etc."),
+]
+
+for i, (title, desc) in enumerate(elements):
+    top = Inches(2.9) + Inches(1.0) * i
+    txt(s, title, Inches(9.1), top, Inches(3.2), Inches(0.35),
+        size=14, color=ACCENT, bold=True)
+    txt(s, desc, Inches(9.1), top + Inches(0.35), Inches(3.2), Inches(0.6),
+        size=12, color=MED)
+
+
+# ============================================================
+# SLIDE 10: The Debug Loop
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "Step 5:  The Debug Loop", Inches(1), Inches(0.6),
+    Inches(11), Inches(0.7), size=36, color=NAVY, bold=True)
+
+txt(s, "The pipeline built the app. Then reality hit \u2014 3 out of 6 APIs had issues.",
+    Inches(1), Inches(1.3), Inches(11), Inches(0.4), size=18, color=MED)
+
+# Debug method
+rect(s, Inches(0.8), Inches(2.1), Inches(12.0), Inches(1.0), LIGHT)
+arrow_chain(s,
+    ["Open app in browser", "See error", "Save console log\nto debug-logs/", "Tell Claude Code\n\"read this log\"", "Claude diagnoses\nand fixes"],
+    Inches(2.25), Inches(1.0), Inches(2.1), Inches(0.3), NAVY, WHITE, SUBTLE, 11)
+
+# The four bugs
+bugs = [
+    ("NASA FIRMS", "400 Error",
+     "URL used lat,lng,radius format \u2014 FIRMS expects bounding box west,south,east,north",
+     "One prompt, fixed"),
+    ("FBI Crime Data", "503 + 404",
+     "Env var mismatch (FBI_API_KEY vs FBI_CRIME_API_KEY) AND wrong endpoint format entirely.\n"
+     "Had to rewrite to /summarized/state/{state}/{offense}?from=MM-YYYY&to=MM-YYYY",
+     "Two prompts, complete rewrite"),
+    ("Weather", "Wrong units",
+     "Open-Meteo defaults to Celsius/km/h. Needed temperature_unit=fahrenheit, wind_speed_unit=mph",
+     "One line fix"),
+    ("AI Briefing", "Empty response",
+     "Anthropic API key had zero credits. Not a code bug at all.",
+     "No code fix \u2014 bought credits"),
+]
+
+for i, (api, error, cause, resolution) in enumerate(bugs):
+    top = Inches(3.5) + Inches(0.95) * i
+    rect(s, Inches(0.8), top, Inches(0.06), Inches(0.75), RED)
+    txt(s, f"{api}  \u2014  {error}", Inches(1.1), top,
+        Inches(3), Inches(0.35), size=15, color=NAVY, bold=True)
+    txt(s, cause, Inches(4.3), top, Inches(5.5), Inches(0.7),
+        size=12, color=MED)
+    txt(s, resolution, Inches(10.2), top, Inches(2.5), Inches(0.7),
+        size=12, color=GREEN, bold=True)
+
+
+# ============================================================
+# SLIDE 11: The Result
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, NAVY)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "The Result", Inches(1), Inches(0.5), Inches(11), Inches(0.6),
+    size=36, color=WHITE, bold=True)
+
+# Stats
 stats = [
-    ("4,455", "Lines of Code"),
-    ("58", "TypeScript Files"),
+    ("4,455", "Lines of TypeScript"),
+    ("58", "Source Files"),
     ("20", "Git Commits"),
-    ("7", "Features"),
+    ("11", "Build Steps"),
     ("0", "Build Failures"),
 ]
 for i, (num, label) in enumerate(stats):
-    left = Inches(0.8) + Inches(2.5) * i
-    nc = ACCENT_GREEN if num == "0" else ACCENT_BLUE
-    add_stat_card(slide, num, label, left, Inches(4.0), num_color=nc)
+    left = Inches(0.6) + Inches(2.55) * i
+    rect(s, left, Inches(1.4), Inches(2.3), Inches(1.5), DARK_BLUE)
+    nc = GREEN if num == "0" else ACCENT
+    txt(s, num, left, Inches(1.5), Inches(2.3), Inches(0.8),
+        size=44, color=nc, bold=True, align=PP_ALIGN.CENTER)
+    txt(s, label, left, Inches(2.25), Inches(2.3), Inches(0.4),
+        size=13, color=SUBTLE, align=PP_ALIGN.CENTER)
 
-# Tool
-add_text(slide, "Built entirely with Claude Code (Opus 4.6, 1M context)",
-         Inches(1), Inches(6.2), Inches(11.3), Inches(0.5),
-         font_size=16, color=MEDIUM_TEXT, alignment=PP_ALIGN.CENTER)
+# Live URL
+rect(s, Inches(1), Inches(3.4), Inches(11.3), Inches(0.6), ACCENT)
+txt(s, "trailhead-pearl.vercel.app", Inches(1), Inches(3.4),
+    Inches(11.3), Inches(0.6), size=22, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+# What it does
+txt(s, "TRAILHEAD \u2014 Federal Lands Daily Briefing Tool",
+    Inches(1), Inches(4.4), Inches(11.3), Inches(0.5),
+    size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+features = [
+    "Real-time weather, seismic, wildfire, crime, and astronomy data for 25 federal land sites",
+    "AI-generated operational briefings via Claude API with streaming",
+    "Interactive Leaflet map with fire and earthquake overlays",
+    "Briefing history, multi-location watchlist, and shareable export",
+    "Deployed to Vercel with all API keys configured",
+]
+for i, f in enumerate(features):
+    txt(s, f"\u2022  {f}", Inches(2), Inches(5.1) + Inches(0.38) * i,
+        Inches(9.3), Inches(0.35), size=15, color=SUBTLE)
 
 
 # ============================================================
-# SLIDE 6: The Process
+# SLIDE 12: Live Demo
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, NAVY)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "The Process", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
+txt(s, "Live Demo", Inches(1), Inches(2.5), Inches(11.3), Inches(1),
+    size=52, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
 
-add_text(slide, "Prompt-Driven Development — every action recorded as a sequential prompt",
-         Inches(1), Inches(1.3), Inches(11), Inches(0.5),
-         font_size=18, color=MEDIUM_TEXT)
+txt(s, "trailhead-pearl.vercel.app", Inches(1), Inches(3.7),
+    Inches(11.3), Inches(0.6), size=24, color=ACCENT, align=PP_ALIGN.CENTER)
 
-# Three-phase timeline
-phases = [
-    ("Research", "3 prompts", [
-        "Company briefing on STS",
-        "100 Free APIs research",
-        "Demo spec + tech stack",
-    ], ACCENT_BLUE),
-    ("Build", "8 prompts", [
-        "Headless pipeline: 11 steps",
-        "Fresh context per feature",
-        "TypeScript verification gates",
-        "Auto-commit on success",
-    ], ACCENT_GREEN),
-    ("Debug & Deploy", "6 prompts", [
-        "Fixed 3 API integrations",
-        "Console log debugging",
-        "Added Anthropic credits",
-        "Deployed to Vercel",
-    ], ORANGE),
+
+# ============================================================
+# SLIDE 13: Lessons Learned
+# ============================================================
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, WHITE)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
+
+txt(s, "What I Learned", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
+    size=36, color=NAVY, bold=True)
+
+lessons = [
+    ("Don't prompt. Engineer.",
+     "The prompt is the last step. Before it, you need research, a spec, a tech stack "
+     "decision record, a build pipeline, and a conventions file. The system that builds "
+     "the system is the real work."),
+    ("Fresh context beats long context.",
+     "11 separate claude -p calls with 50 lines of CLAUDE.md outperformed one long session "
+     "that degraded by feature 4. Claude rediscovers the codebase from the filesystem \u2014 "
+     "you just need to tell it the patterns."),
+    ("Verification gates are non-negotiable.",
+     "TypeScript compilation + build between every step caught errors before they compounded. "
+     "Without this, feature 7 would inherit broken assumptions from feature 3."),
+    ("Markdown in, software out.",
+     "The entire process was: write a markdown file, feed it to Claude, get an artifact, "
+     "use that artifact to write the next markdown file. The repo is the complete record."),
+    ("AI gets you 0\u201380%. You're still the engineer.",
+     "API format mismatches, env var typos, wrong units \u2014 real-world integration still "
+     "needs a human who reads the error and understands the domain."),
 ]
 
-for i, (title, subtitle, items, color) in enumerate(phases):
-    left = Inches(0.8) + Inches(4.1) * i
-    # Phase card
-    add_shape(slide, left, Inches(2.2), Inches(3.7), Inches(0.08), color)
-    add_text(slide, title, left, Inches(2.5), Inches(3.7), Inches(0.5),
-             font_size=24, color=NAVY, bold=True)
-    add_text(slide, subtitle, left, Inches(3.0), Inches(3.7), Inches(0.4),
-             font_size=14, color=color, bold=True)
-    for j, item in enumerate(items):
-        top = Inches(3.6) + Inches(0.4) * j
-        add_text(slide, f"\u2022  {item}", left + Inches(0.2), top,
-                 Inches(3.3), Inches(0.35), font_size=14, color=MEDIUM_TEXT)
-
-# Pipeline diagram label
-add_shape(slide, Inches(0.8), Inches(5.6), Inches(11.5), Inches(1.2), LIGHT_GRAY)
-add_text(slide, "Build Pipeline Pattern", Inches(1.1), Inches(5.7),
-         Inches(4), Inches(0.4), font_size=16, color=NAVY, bold=True)
-add_text(slide, (
-    "claude -p \"feature prompt\"  \u2192  TypeScript verification  \u2192  "
-    "git commit  \u2192  next feature\n"
-    "Each feature gets a fresh context window. No context degradation. Clean git history."
-), Inches(1.1), Inches(6.1), Inches(10.8), Inches(0.6),
-    font_size=14, color=MEDIUM_TEXT)
-
-
-# ============================================================
-# SLIDE 7: The 17-Prompt Journey
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "The 17-Prompt Journey", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
-
-add_text(slide, "Every interaction recorded — the entire repo is transparent",
-         Inches(1), Inches(1.2), Inches(11), Inches(0.4),
-         font_size=16, color=MEDIUM_TEXT)
-
-prompts_data = [
-    ("001-002", "Project setup", "human"),
-    ("003-006", "Research: STS, APIs, spec, tech stack", "research"),
-    ("007", "Master setup prompt", "claude"),
-    ("008", "Fixed response approach", "claude"),
-    ("009", "Research: agentic development patterns", "claude"),
-    ("010", "Built entire app (11 steps, 0 failures)", "claude"),
-    ("011-013", "API keys, nested .git fix, results update", "claude"),
-    ("014", "Started dev server", "claude"),
-    ("015", "Fixed fire, crime, and weather APIs", "claude"),
-    ("016", "Debugged briefing error (API credits)", "claude"),
-    ("017", "Deployed to Vercel", "claude"),
-]
-
-color_map = {
-    "human": MEDIUM_TEXT,
-    "research": ACCENT_BLUE,
-    "claude": ACCENT_GREEN,
-}
-
-for i, (num, desc, ptype) in enumerate(prompts_data):
-    top = Inches(1.85) + Inches(0.46) * i
-    color = color_map[ptype]
-    # Number pill
-    pill = add_shape(slide, Inches(1.2), top + Inches(0.03), Inches(1.2), Inches(0.35), color)
-    add_text(slide, num, Inches(1.2), top + Inches(0.03), Inches(1.2), Inches(0.35),
-             font_size=13, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-    # Description
-    add_text(slide, desc, Inches(2.7), top, Inches(8), Inches(0.4),
-             font_size=15, color=DARK_TEXT)
-
-# Legend
-legend_items = [
-    ("Human Action", MEDIUM_TEXT),
-    ("Research", ACCENT_BLUE),
-    ("Claude Code", ACCENT_GREEN),
-]
-for i, (label, color) in enumerate(legend_items):
-    left = Inches(8.5) + Inches(1.7) * i
-    add_shape(slide, left, Inches(7.0), Inches(0.3), Inches(0.25), color)
-    add_text(slide, label, left + Inches(0.4), Inches(6.95), Inches(1.2), Inches(0.3),
-             font_size=11, color=MEDIUM_TEXT)
-
-
-# ============================================================
-# SLIDE 8: Real Debugging
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "Real Bugs, Real Fixes", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
-
-add_text(slide, "Claude Code doesn't just generate code — it debugs from console logs",
-         Inches(1), Inches(1.3), Inches(11), Inches(0.4),
-         font_size=18, color=MEDIUM_TEXT)
-
-bugs = [
-    ("NASA FIRMS API", "400 Error",
-     "URL used lat,lng,radius format",
-     "Changed to bounding box: west,south,east,north"),
-    ("FBI Crime API", "503 Error",
-     "Wrong env var name (FBI_API_KEY vs FBI_CRIME_API_KEY)\n"
-     "Wrong endpoint and date format",
-     "Fixed env var + rewrote to use\n/summarized/state/{state}/{offense}?from=MM-YYYY"),
-    ("Open-Meteo Weather", "Wrong units",
-     "API defaults to Celsius and km/h",
-     "Added temperature_unit=fahrenheit\nand wind_speed_unit=mph"),
-    ("Claude Briefing API", "Empty response",
-     "Anthropic API key had no credits",
-     "No code fix needed — added credits to account"),
-]
-
-for i, (api, error, cause, fix) in enumerate(bugs):
-    top = Inches(2.1) + Inches(1.25) * i
-    # API name
-    add_shape(slide, Inches(1), top, Inches(0.06), Inches(1.0), RED_ACCENT)
-    add_text(slide, api, Inches(1.3), top, Inches(2.5), Inches(0.35),
-             font_size=16, color=NAVY, bold=True)
-    add_text(slide, error, Inches(1.3), top + Inches(0.32), Inches(2.5), Inches(0.3),
-             font_size=12, color=RED_ACCENT, bold=True)
-    # Cause → Fix
-    add_text(slide, cause, Inches(4.2), top, Inches(4), Inches(1.0),
-             font_size=13, color=MEDIUM_TEXT)
-    add_text(slide, "\u2192", Inches(8.3), top + Inches(0.1), Inches(0.4), Inches(0.4),
-             font_size=20, color=ACCENT_GREEN, bold=True, alignment=PP_ALIGN.CENTER)
-    add_text(slide, fix, Inches(8.8), top, Inches(4), Inches(1.0),
-             font_size=13, color=ACCENT_GREEN)
-
-# Method note
-add_shape(slide, Inches(1), Inches(6.4), Inches(11.3), Inches(0.7), LIGHT_GRAY)
-add_text(slide, (
-    "Method:  Rudy pasted browser console logs into a gitignored debug-logs/ folder. "
-    "Claude Code read the logs, diagnosed the root cause, and applied the fix."
-), Inches(1.3), Inches(6.5), Inches(10.7), Inches(0.5),
-    font_size=14, color=MEDIUM_TEXT)
-
-
-# ============================================================
-# SLIDE 9: Architecture
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "Architecture", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
-
-# Tech stack pills
-tech = [
-    "Next.js 15", "TypeScript", "Tailwind CSS v4", "shadcn/ui",
-    "Zustand", "TanStack Query", "React Leaflet", "Anthropic SDK"
-]
-for i, t in enumerate(tech):
-    left = Inches(1) + Inches(1.5) * i
-    pill = add_shape(slide, left, Inches(1.5), Inches(1.35), Inches(0.38), NAVY)
-    add_text(slide, t, left, Inches(1.5), Inches(1.35), Inches(0.38),
-             font_size=11, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-
-# Data flow diagram (text-based)
-flow_labels = [
-    ("6 Public APIs", ACCENT_BLUE, Inches(1)),
-    ("\u2192", MEDIUM_TEXT, Inches(3.8)),
-    ("lib/api/ wrappers", DARK_BLUE, Inches(4.3)),
-    ("\u2192", MEDIUM_TEXT, Inches(6.6)),
-    ("app/api/ routes", DARK_BLUE, Inches(7.1)),
-    ("\u2192", MEDIUM_TEXT, Inches(9.2)),
-    ("TanStack Query", DARK_BLUE, Inches(9.7)),
-    ("\u2192", MEDIUM_TEXT, Inches(11.6)),
-]
-
-for label, color, left in flow_labels:
-    if label == "\u2192":
-        add_text(slide, label, left, Inches(2.35), Inches(0.5), Inches(0.5),
-                 font_size=24, color=color, bold=True, alignment=PP_ALIGN.CENTER)
-    else:
-        add_shape(slide, left, Inches(2.35), Inches(2.4), Inches(0.45), LIGHT_GRAY)
-        add_text(slide, label, left, Inches(2.35), Inches(2.4), Inches(0.45),
-                 font_size=13, color=color, bold=True, alignment=PP_ALIGN.CENTER)
-
-# UI label at the end
-add_shape(slide, Inches(11.2), Inches(2.35), Inches(1.3), Inches(0.45), ACCENT_GREEN)
-add_text(slide, "UI", Inches(11.2), Inches(2.35), Inches(1.3), Inches(0.45),
-         font_size=13, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-
-# Key patterns
-add_text(slide, "Key Design Decisions", Inches(1), Inches(3.3),
-         Inches(11), Inches(0.5), font_size=20, color=NAVY, bold=True)
-
-patterns_left = [
-    "Server Components by default — 'use client' only when needed",
-    "Zustand stores with localStorage for offline persistence",
-    "Auto-refresh intervals tuned per data source (5min to 24hr)",
-    "React Leaflet with dynamic import + ssr: false",
-]
-patterns_right = [
-    "API routes proxy external calls (no CORS, key protection)",
-    "Promise.allSettled for fault-tolerant data gathering",
-    "Streaming response for AI briefing generation",
-    "25 curated locations across 6 federal agencies",
-]
-
-for i, p in enumerate(patterns_left):
-    top = Inches(3.9) + Inches(0.45) * i
-    add_text(slide, f"\u2022  {p}", Inches(1.2), top, Inches(5.5), Inches(0.4),
-             font_size=14, color=MEDIUM_TEXT)
-
-for i, p in enumerate(patterns_right):
-    top = Inches(3.9) + Inches(0.45) * i
-    add_text(slide, f"\u2022  {p}", Inches(7), top, Inches(5.5), Inches(0.4),
-             font_size=14, color=MEDIUM_TEXT)
-
-# Briefing pipeline
-add_shape(slide, Inches(1), Inches(5.9), Inches(11.3), Inches(1.2), NAVY)
-add_text(slide, "AI Briefing Pipeline", Inches(1.3), Inches(6.0),
-         Inches(3), Inches(0.35), font_size=16, color=ACCENT_BLUE, bold=True)
-add_text(slide, (
-    "Weather + Seismic + Fire + Crime + Astronomy  \u2192  Promise.allSettled  "
-    "\u2192  Structured prompt  \u2192  Claude claude-sonnet-4-20250514  \u2192  "
-    "Streamed 5-section briefing"
-), Inches(1.3), Inches(6.4), Inches(10.8), Inches(0.5),
-    font_size=14, color=SUBTLE_TEXT)
-
-
-# ============================================================
-# SLIDE 10: Connect to STS
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "Same Pattern, Your Mission", Inches(1), Inches(0.6),
-         Inches(11), Inches(0.7), font_size=36, color=NAVY, bold=True)
-
-add_text(slide, (
-    "TRAILHEAD uses the same agentic AI pattern STS is already building:"
-), Inches(1), Inches(1.4), Inches(11), Inches(0.5),
-    font_size=18, color=MEDIUM_TEXT)
-
-# Pattern comparison
-add_text(slide, "Gather structured data  \u2192  Apply AI reasoning  \u2192  Produce actionable output",
-         Inches(1.5), Inches(2.1), Inches(10.3), Inches(0.5),
-         font_size=22, color=ACCENT_BLUE, bold=True, alignment=PP_ALIGN.CENTER)
-
-# Comparison cards
-products = [
-    ("TRAILHEAD", "6 public APIs \u2192 Claude \u2192 operational briefing",
-     "Built in one afternoon with Claude Code"),
-    ("C-CAT", "CJIS policy documents \u2192 AI review \u2192 compliance report",
-     "50+ minute manual reviews \u2192 under 4 minutes"),
-    ("LEI", "Incident data \u2192 agentic AI \u2192 compliance notifications",
-     "Automated officer compliance reporting"),
-]
-
-for i, (name, desc, note) in enumerate(products):
-    left = Inches(0.8) + Inches(4.1) * i
-    card_color = NAVY if i == 0 else LIGHT_GRAY
-    text_color = WHITE if i == 0 else DARK_TEXT
-    note_color = ACCENT_BLUE if i == 0 else MEDIUM_TEXT
-    add_shape(slide, left, Inches(3.0), Inches(3.7), Inches(2.2), card_color)
-    add_text(slide, name, left + Inches(0.3), Inches(3.2),
-             Inches(3.1), Inches(0.5), font_size=24, color=text_color if i == 0 else NAVY, bold=True)
-    add_text(slide, desc, left + Inches(0.3), Inches(3.8),
-             Inches(3.1), Inches(0.8), font_size=14, color=text_color if i == 0 else MEDIUM_TEXT)
-    add_text(slide, note, left + Inches(0.3), Inches(4.6),
-             Inches(3.1), Inches(0.4), font_size=12, color=note_color, bold=True)
-
-# Key message
-add_shape(slide, Inches(1), Inches(5.7), Inches(11.3), Inches(1.2), LIGHT_GRAY)
-add_text(slide, (
-    "Claude Code doesn't replace your engineers. It lets them build the first "
-    "working version in a day instead of a sprint."
-), Inches(1.5), Inches(5.85), Inches(10.3), Inches(0.7),
-    font_size=20, color=NAVY, bold=True, alignment=PP_ALIGN.CENTER)
-
-add_text(slide, (
-    "Your DEAM practice already integrates disparate data sources. "
-    "Your engineers already understand agentic patterns.\n"
-    "Claude Code accelerates the path from idea to working prototype."
-), Inches(1.5), Inches(6.45), Inches(10.3), Inches(0.5),
-    font_size=14, color=MEDIUM_TEXT, alignment=PP_ALIGN.CENTER)
-
-
-# ============================================================
-# SLIDE 11: What's Next
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "What Could Come Next", Inches(1), Inches(0.6),
-         Inches(11), Inches(0.7), font_size=36, color=NAVY, bold=True)
-
-add_text(slide, (
-    "Imagine TRAILHEAD connected to real operational data:"
-), Inches(1), Inches(1.4), Inches(11), Inches(0.5),
-    font_size=18, color=MEDIUM_TEXT)
-
-next_items = [
-    ("LERMS incident data", "The briefing includes overnight incidents, arrests, and citations from the officer's jurisdiction"),
-    ("CAD dispatch feed", "Real-time call volume and active incidents layered onto the map"),
-    ("CJIS-compliant sources", "Secure access to criminal history and warrant data within the briefing"),
-    ("Officer shift data", "Personalized briefings based on assignment area, role, and shift timing"),
-    ("Multi-agency coordination", "Cross-bureau situational awareness for joint operations"),
-]
-
-for i, (title, desc) in enumerate(next_items):
-    top = Inches(2.2) + Inches(0.85) * i
-    add_shape(slide, Inches(1.2), top, Inches(0.06), Inches(0.65), ACCENT_BLUE)
-    add_text(slide, title, Inches(1.5), top, Inches(3.5), Inches(0.35),
-             font_size=17, color=NAVY, bold=True)
-    add_text(slide, desc, Inches(1.5), top + Inches(0.32), Inches(10), Inches(0.35),
-             font_size=14, color=MEDIUM_TEXT)
-
-# Bottom quote
-add_shape(slide, Inches(1), Inches(6.2), Inches(11.3), Inches(0.8), NAVY)
-add_text(slide, (
-    '"That\'s a product conversation, not a technology barrier."'
-), Inches(1), Inches(6.3), Inches(11.3), Inches(0.6),
-    font_size=22, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-
-
-# ============================================================
-# SLIDE 12: Key Takeaways
-# ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, WHITE)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
-
-add_text(slide, "Key Takeaways", Inches(1), Inches(0.6), Inches(11), Inches(0.7),
-         font_size=36, color=NAVY, bold=True)
-
-takeaways = [
-    ("Claude Code builds real applications",
-     "Not mockups — production-grade code with proper architecture, error handling, and deployment"),
-    ("Prompt engineering is the new project management",
-     "Clear specs, sequential prompts, and verification gates produce reliable results"),
-    ("AI accelerates the 0-to-80% dramatically",
-     "Infrastructure, boilerplate, API integrations, and UI come together in hours"),
-    ("The last 20% still needs a human",
-     "API quirks, debugging, deployment config — real-world integration requires human judgment"),
-    ("The pattern scales to your mission",
-     "Same approach works for any \"gather data + apply AI reasoning + produce output\" workflow"),
-]
-
-for i, (title, desc) in enumerate(takeaways):
-    top = Inches(1.6) + Inches(1.05) * i
-    # Number circle
-    circle = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1.2), top + Inches(0.05),
-                                     Inches(0.5), Inches(0.5))
+for i, (title, desc) in enumerate(lessons):
+    top = Inches(1.6) + Inches(1.1) * i
+    circle = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1), top + Inches(0.05),
+                                 Inches(0.45), Inches(0.45))
     circle.fill.solid()
-    circle.fill.fore_color.rgb = ACCENT_BLUE
+    circle.fill.fore_color.rgb = ACCENT
     circle.line.fill.background()
-    add_text(slide, str(i + 1), Inches(1.2), top + Inches(0.05), Inches(0.5), Inches(0.5),
-             font_size=18, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-    # Text
-    add_text(slide, title, Inches(2.0), top, Inches(9.5), Inches(0.4),
-             font_size=18, color=NAVY, bold=True)
-    add_text(slide, desc, Inches(2.0), top + Inches(0.4), Inches(9.5), Inches(0.4),
-             font_size=14, color=MEDIUM_TEXT)
+    txt(s, str(i + 1), Inches(1), top + Inches(0.05), Inches(0.45), Inches(0.45),
+        size=16, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+    txt(s, title, Inches(1.7), top, Inches(10), Inches(0.4),
+        size=18, color=NAVY, bold=True)
+    txt(s, desc, Inches(1.7), top + Inches(0.4), Inches(10), Inches(0.55),
+        size=14, color=MED)
 
 
 # ============================================================
-# SLIDE 13: Q&A
+# SLIDE 14: Q&A
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide, NAVY)
-add_shape(slide, Inches(0), Inches(0), W, Inches(0.06), ACCENT_BLUE)
+s = prs.slides.add_slide(prs.slide_layouts[6])
+bg(s, NAVY)
+rect(s, Inches(0), Inches(0), W, Inches(0.06), ACCENT)
 
-add_text(slide, "Questions?", Inches(1), Inches(2.2), Inches(11.3), Inches(1),
-         font_size=52, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+txt(s, "Questions?", Inches(1), Inches(2.0), Inches(11.3), Inches(1),
+    size=52, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
 
-add_shape(slide, Inches(5.5), Inches(3.5), Inches(2.3), Inches(0.04), ACCENT_BLUE)
+rect(s, Inches(5.5), Inches(3.2), Inches(2.3), Inches(0.04), ACCENT)
 
-add_text(slide, "App:  trailhead-pearl.vercel.app",
-         Inches(1), Inches(4.0), Inches(11.3), Inches(0.5),
-         font_size=18, color=SUBTLE_TEXT, alignment=PP_ALIGN.CENTER)
-add_text(slide, "Repo:  github.com/keepitsts/claude-ai-brown-bag",
-         Inches(1), Inches(4.5), Inches(11.3), Inches(0.5),
-         font_size=18, color=SUBTLE_TEXT, alignment=PP_ALIGN.CENTER)
-add_text(slide, "Every prompt is in the repo  —  the entire process is transparent",
-         Inches(1), Inches(5.3), Inches(11.3), Inches(0.5),
-         font_size=16, color=SUBTLE_TEXT, alignment=PP_ALIGN.CENTER)
+txt(s, "App:   trailhead-pearl.vercel.app",
+    Inches(1), Inches(3.8), Inches(11.3), Inches(0.5),
+    size=18, color=SUBTLE, align=PP_ALIGN.CENTER)
+txt(s, "Repo:  github.com/keepitsts/claude-ai-brown-bag",
+    Inches(1), Inches(4.3), Inches(11.3), Inches(0.5),
+    size=18, color=SUBTLE, align=PP_ALIGN.CENTER)
+
+rect(s, Inches(2), Inches(5.3), Inches(9.3), Inches(1.2), DARK_BLUE)
+txt(s, "Every prompt, every research artifact, every build script\nis in the repo. "
+       "The entire process is transparent.",
+    Inches(2.5), Inches(5.5), Inches(8.3), Inches(0.8),
+    size=16, color=SUBTLE, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
 # Save
 # ============================================================
-output_path = "/home/rczauel/claude-ai-brown-bag/presentation/claude-code-brown-bag.pptx"
-prs.save(output_path)
-print(f"Saved to {output_path}")
+output = "/home/rczauel/claude-ai-brown-bag/presentation/claude-code-brown-bag.pptx"
+prs.save(output)
+print(f"Saved: {output}")
